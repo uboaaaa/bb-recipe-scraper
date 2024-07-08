@@ -75,7 +75,7 @@ def scrape_recipe(url, scraper):
         # Data processing
         cost_span = soup.find("span", class_="cost-per")
         if cost_span:
-            cost_raw = [float(f) for f in re.findall(r"[\d\.\d]+", cost_span.text)]
+            cost_raw = [float(f) for f in re.findall(r'\d+(?:\.\d+)?', cost_span.text)]
             if len(cost_raw) == 1:
                 cost_total = -1
                 cost_per = cost_raw[0]
@@ -92,14 +92,18 @@ def scrape_recipe(url, scraper):
             return int("".join([d for d in str(time_string) if d.isdigit()] or ["0"]))
 
         recipe_yield = recipe_data.get("recipeYield", ["", ""])
-        if isinstance(recipe_yield, str):
-            recipe_yield = [recipe_yield, ""]
-        servings = float(recipe_yield[0])
-        serving_unit = (
-            recipe_yield[1][1:].replace(")", "").replace("(", "").strip()
-            if len(recipe_yield) > 1
-            else ""
-        )
+        try:
+            servings = recipe_yield[0]
+            serving_unit = (
+                recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
+                if len(recipe_yield) > 1
+                else ""
+            )
+            servings = float(servings)
+
+        except:
+            servings = -1
+            serving_unit = ''
 
         prep_time = extract_time(recipe_data.get("prepTime", 0))
         cook_time = extract_time(recipe_data.get("cookTime", 0))
@@ -132,7 +136,10 @@ def scrape_recipe(url, scraper):
             process_instruction(instruction)
 
         nutrition = recipe_data.get("nutrition", {})
-        del nutrition["@type"]
+        try:
+            del nutrition["@type"]
+        except:
+            pass
 
         notes_raw = soup.find("div", class_="wprm-recipe-notes")
         if notes_raw:
@@ -193,13 +200,13 @@ def scrape_all_recipes(sitemap_urls):
         status, result = scrape_recipe(url, scraper)
         if status == "success":
             successful_scrapes.append(result)
-            logging.info(f"{status} on {url}; :^)")
+            logging.info(f"{status}; :^)")
         elif status == "skipped":
             skipped_scrapes.append((url, result))
-            logging.info(f"{status} on {url}; :/")
+            logging.info(f"{status}; :/")
         else:
             failed_scrapes.append((url, result))
-            logging.info(f"{status} on {url}; :^(")
+            logging.info(f"{status}; :^(")
         
         logging.info(f"Processed {i} / {total_urls} URLs")
         time.sleep(random.uniform(1, 3))

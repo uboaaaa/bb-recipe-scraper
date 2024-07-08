@@ -1,6 +1,1 @@
-https://www.budgetbytes.com/make-instant-pot-chicken-stock/: Error scraping recipe https://www.budgetbytes.com/make-instant-pot-chicken-stock/: could not convert string to float: ''
-https://www.budgetbytes.com/how-to-make-oat-milk/: Error scraping recipe https://www.budgetbytes.com/how-to-make-oat-milk/: '@type'
-https://www.budgetbytes.com/slow-cooker-chicken/: Error scraping recipe https://www.budgetbytes.com/slow-cooker-chicken/: could not convert string to float: '.'
-https://www.budgetbytes.com/quick-seasoned-black-beans/: Error scraping recipe https://www.budgetbytes.com/quick-seasoned-black-beans/: could not convert string to float: '1.33.'
-https://www.budgetbytes.com/how-to-make-chicken-broth/: Error scraping recipe https://www.budgetbytes.com/how-to-make-chicken-broth/: '@type'
-https://www.budgetbytes.com/cranberry-almond-biscotti/: Error scraping recipe https://www.budgetbytes.com/cranberry-almond-biscotti/: could not convert string to float: '.'
+https://www.budgetbytes.com/5-minute-microwave-french-toast-mug/: Error scraping recipe https://www.budgetbytes.com/5-minute-microwave-french-toast-mug/: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))

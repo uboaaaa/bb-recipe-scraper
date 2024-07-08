@@ -55,7 +55,7 @@ def scrape_recipe(url, scraper):
         # Data processing
         cost_span = soup.find("span", class_="cost-per")
         if cost_span:
-            cost_raw = [float(f) for f in re.findall(r'[\d\.\d]+', cost_span.text)]
+            cost_raw = [float(f) for f in re.findall(r'\d+(?:\.\d+)?', cost_span.text)]
             if len(cost_raw) == 1:
                 cost_total = -1
                 cost_per = cost_raw[0]
@@ -72,15 +72,18 @@ def scrape_recipe(url, scraper):
             return int("".join([d for d in str(time_string) if d.isdigit()] or ["0"]))
 
         recipe_yield = recipe_data.get("recipeYield", ["", ""])
-        if isinstance(recipe_yield, str):
-            recipe_yield = [recipe_yield, ""]
-        servings = recipe_yield[0]
-        serving_unit = (
-            recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
-            if len(recipe_yield) > 1
-            else ""
-        )
-        servings = float(servings)
+        try:
+            servings = recipe_yield[0]
+            serving_unit = (
+                recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
+                if len(recipe_yield) > 1
+                else ""
+            )
+            servings = float(servings)
+
+        except:
+            servings = -1
+            serving_unit = ''
 
         prep_time = extract_time(recipe_data.get("prepTime", 0))
         cook_time = extract_time(recipe_data.get("cookTime", 0))
@@ -109,7 +112,10 @@ def scrape_recipe(url, scraper):
             process_instruction(instruction)
 
         nutrition = recipe_data.get("nutrition", {})
-        del nutrition["@type"]
+        try:
+            del nutrition["@type"]
+        except:
+            pass
 
         notes_raw = soup.find("div", class_="wprm-recipe-notes")
         if notes_raw:
@@ -149,6 +155,6 @@ def scrape_recipe(url, scraper):
 
 scraper = cloudscraper.create_scraper(browser="chrome")
 
-url = "https://www.budgetbytes.com/classic-tomato-sandwiches/"
+url = "https://www.budgetbytes.com/cranberry-almond-biscotti/"
 
 pprint(scrape_recipe(url, scraper), sort_dicts=False)
