@@ -74,12 +74,13 @@ def scrape_recipe(url, scraper):
         recipe_yield = recipe_data.get("recipeYield", ["", ""])
         if isinstance(recipe_yield, str):
             recipe_yield = [recipe_yield, ""]
-        servings = float(recipe_yield[0])
+        servings = recipe_yield[0]
         serving_unit = (
-            recipe_yield[1][1:].replace(")", "").replace("(", "").strip()
+            recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
             if len(recipe_yield) > 1
             else ""
         )
+        servings = float(servings)
 
         prep_time = extract_time(recipe_data.get("prepTime", 0))
         cook_time = extract_time(recipe_data.get("cookTime", 0))
@@ -148,6 +149,6 @@ def scrape_recipe(url, scraper):
 
 scraper = cloudscraper.create_scraper(browser="chrome")
 
-url = "https://www.budgetbytes.com/how-to-cook-rice/"
+url = "https://www.budgetbytes.com/classic-tomato-sandwiches/"
 
 pprint(scrape_recipe(url, scraper), sort_dicts=False)

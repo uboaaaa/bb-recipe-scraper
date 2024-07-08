@@ -2,11 +2,13 @@ from lxml import etree
 from bs4 import BeautifulSoup
 import cloudscraper
 import pandas as pd
+import logging
 import time
 import random
 import json
 import re
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Methods
 def parse_sitemap_url(url, scraper):
@@ -34,14 +36,13 @@ def scrape_recipe(url, scraper):
     print(f"Scraping recipe: {url}")
     try:
         response = scraper.get(url)
-        response.raise_for_status()  # TODO turn to function
+        response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
         # BB recipe pages can be differentiated from other pages by presence of the "recipe card" which contains ingredients, instructions, etc
         recipe_card = soup.find("div", class_="bb-recipe-card")
         if not recipe_card:
-            print("Not a recipe page! Skipping...")
-            return None
+            return ("skipped", "Not a recipe page")
 
         script = soup.find("script", type="application/ld+json")
 
@@ -69,13 +70,12 @@ def scrape_recipe(url, scraper):
                 recipe_data = None
 
             if not recipe_data:
-                print("No Recipe data found in JSON-LD")
-                return None
+                return ("skipped", "No Recipe data found in JSON-LD")
 
         # Data processing
         cost_span = soup.find("span", class_="cost-per")
         if cost_span:
-            cost_raw = [float(f) for f in re.findall(r'[\d\.\d]+', cost_span.text)]
+            cost_raw = [float(f) for f in re.findall(r"[\d\.\d]+", cost_span.text)]
             if len(cost_raw) == 1:
                 cost_total = -1
                 cost_per = cost_raw[0]
@@ -106,22 +106,26 @@ def scrape_recipe(url, scraper):
         total_time = extract_time(recipe_data.get("totalTime", prep_time + cook_time))
 
         ingredients_raw = recipe_data.get("recipeIngredient", [])
-        ingredients = [" ".join(i.split()) for i in ingredients_raw] # normalize spacing
+        ingredients = [
+            " ".join(i.split()) for i in ingredients_raw
+        ]  # normalize spacing
 
         instructions_raw = recipe_data.get("recipeInstructions", [])
         instructions = {}
         step_counter = 1
 
-        def process_instruction(instruction, parent_name=''): #TODO look at this
+        def process_instruction(instruction, parent_name=""):
             nonlocal step_counter
             if isinstance(instruction, dict):
-                if instruction.get('@type') == 'HowToSection':
-                    section_name = instruction.get('name', '')
-                    for item in instruction.get('itemListElement', []):
+                if instruction.get("@type") == "HowToSection":
+                    section_name = instruction.get("name", "")
+                    for item in instruction.get("itemListElement", []):
                         process_instruction(item, section_name)
-                elif instruction.get('@type') == 'HowToStep':
+                elif instruction.get("@type") == "HowToStep":
                     prefix = f"{parent_name}: " if parent_name else ""
-                    instructions[step_counter] = f"{prefix}{instruction.get('text', '')}"
+                    instructions[step_counter] = (
+                        f"{prefix}{instruction.get('text', '')}"
+                    )
                     step_counter += 1
 
         for instruction in instructions_raw:
@@ -138,52 +142,69 @@ def scrape_recipe(url, scraper):
 
         keywords = set(recipe_data.get("keywords", "").lower().split(", "))
 
-        return {
-            "url": url,
-            "name": recipe_data.get("name", ""),
-            "rating-avg": float(
-                recipe_data.get("aggregateRating", {}).get("ratingValue", -1)
-            ),
-            "rating-votes": int(
-                recipe_data.get("aggregateRating", {}).get("ratingCount", -1)
-            ),
-            "cost_total": cost_total,
-            "cost_per_serving": cost_per,
-            "servings": servings,
-            "serving-unit": serving_unit,
-            "prep-time": prep_time,
-            "cook-time": cook_time,
-            "total-time": total_time,
-            "ingredients": ingredients,
-            "instructions": instructions,
-            "nutrition-data": nutrition,
-            "notes": notes,
-            "keywords": keywords
-        }
+        return (
+            "success",
+            {
+                "url": url,
+                "name": recipe_data.get("name", ""),
+                "rating-avg": float(
+                    recipe_data.get("aggregateRating", {}).get("ratingValue", -1)
+                ),
+                "rating-votes": int(
+                    recipe_data.get("aggregateRating", {}).get("ratingCount", -1)
+                ),
+                "cost_total": cost_total,
+                "cost_per_serving": cost_per,
+                "servings": servings,
+                "serving-unit": serving_unit,
+                "prep-time": prep_time,
+                "cook-time": cook_time,
+                "total-time": total_time,
+                "ingredients": ingredients,
+                "instructions": instructions,
+                "nutrition-data": nutrition,
+                "notes": notes,
+                "keywords": keywords,
+            },
+        )
 
     except Exception as e:
-        print(f"Error scraping recipe {url}: {e}")
-        exit()
+        err_msg = f"Error scraping recipe {url}: {e}"
+        return ("error", err_msg)
 
 
 def scrape_all_recipes(sitemap_urls):
     scraper = cloudscraper.create_scraper(browser="chrome")
     all_recipe_urls = set()
-    all_recipe_data = []
+    successful_scrapes = []
+    skipped_scrapes = []  # for double checking
+    failed_scrapes = []
 
     # Get all recipe URLs
     for sitemap_url in sitemap_urls:
         all_recipe_urls.update(parse_sitemap_url(sitemap_url, scraper))
         time.sleep(random.uniform(1, 3))
 
+    total_urls = len(all_recipe_urls)
+    logging.info(f"Found {total_urls} URLs to scrape")
+
     # Scrape recipes from each URL
-    for url in all_recipe_urls:
-        recipe = scrape_recipe(url, scraper)
-        if recipe:
-            all_recipe_data.append(recipe)
+    for i, url in enumerate(all_recipe_urls, 1):
+        status, result = scrape_recipe(url, scraper)
+        if status == "success":
+            successful_scrapes.append(result)
+            logging.info(f"{status} on {url}; :^)")
+        elif status == "skipped":
+            skipped_scrapes.append((url, result))
+            logging.info(f"{status} on {url}; :/")
+        else:
+            failed_scrapes.append((url, result))
+            logging.info(f"{status} on {url}; :^(")
+        
+        logging.info(f"Processed {i} / {total_urls} URLs")
         time.sleep(random.uniform(1, 3))
 
-    return all_recipe_data
+    return successful_scrapes, skipped_scrapes, failed_scrapes
 
 
 # Create scraper and scrape
@@ -192,8 +213,22 @@ sitemap_urls = [
     "https://www.budgetbytes.com/post-sitemap2.xml",
 ]
 
-all_recipe_data = scrape_all_recipes(sitemap_urls)
+successful_scrapes, skipped_scrapes, failed_scrapes = scrape_all_recipes(sitemap_urls)
 
-# Dump recipe data into csv
-df = pd.DataFrame(all_recipe_data)
+# Print summary
+print(f"Successfully scraped: {len(successful_scrapes)} recipes")
+print(f"Skipped pages: {len(skipped_scrapes)}")
+print(f"Failed scrapes: {len(failed_scrapes)}")
+
+# Dump details to files
+with open("skipped_scrapes.txt", "w") as f:
+    for url, reason in skipped_scrapes:
+        f.write(f"{url}: {reason}\n")
+
+with open("failed_scrapes", "w") as f:
+    for url, reason in failed_scrapes:
+        f.write(f"{url}: {reason}\n")
+
+# Dump successes into csv
+df = pd.DataFrame(successful_scrapes)
 df.to_csv("bb_recipes.csv", index=False)
