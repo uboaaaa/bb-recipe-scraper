@@ -155,6 +155,6 @@ def scrape_recipe(url, scraper):
 
 scraper = cloudscraper.create_scraper(browser="chrome")
 
-url = "https://www.budgetbytes.com/cranberry-almond-biscotti/"
+url = "https://www.budgetbytes.com/5-minute-microwave-french-toast-mug/"
 
-pprint(scrape_recipe(url, scraper), sort_dicts=False)
+print(scrape_recipe(url, scraper))
