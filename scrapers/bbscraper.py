@@ -8,7 +8,10 @@ import random
 import json
 import re
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 # Methods
 def parse_sitemap_url(url, scraper):
@@ -75,7 +78,7 @@ def scrape_recipe(url, scraper):
         # Data processing
         cost_span = soup.find("span", class_="cost-per")
         if cost_span:
-            cost_raw = [float(f) for f in re.findall(r'\d+(?:\.\d+)?', cost_span.text)]
+            cost_raw = [float(f) for f in re.findall(r"\d+(?:\.\d+)?", cost_span.text)]
             if len(cost_raw) == 1:
                 cost_total = -1
                 cost_per = cost_raw[0]
@@ -95,7 +98,11 @@ def scrape_recipe(url, scraper):
         try:
             servings = recipe_yield[0]
             serving_unit = (
-                recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
+                recipe_yield[1]
+                .replace(servings, "")
+                .replace(")", "")
+                .replace("(", "")
+                .strip()
                 if len(recipe_yield) > 1
                 else ""
             )
@@ -103,7 +110,7 @@ def scrape_recipe(url, scraper):
 
         except:
             servings = -1
-            serving_unit = ''
+            serving_unit = ""
 
         prep_time = extract_time(recipe_data.get("prepTime", 0))
         cook_time = extract_time(recipe_data.get("cookTime", 0))
@@ -153,6 +160,7 @@ def scrape_recipe(url, scraper):
             "success",
             {
                 "url": url,
+                "image": recipe_data.get("image")[0],
                 "name": recipe_data.get("name", ""),
                 "rating-avg": float(
                     recipe_data.get("aggregateRating", {}).get("ratingValue", -1)
@@ -207,7 +215,7 @@ def scrape_all_recipes(sitemap_urls):
         else:
             failed_scrapes.append((url, result))
             logging.info(f"{status}; :^(")
-        
+
         logging.info(f"Processed {i} / {total_urls} URLs")
         time.sleep(random.uniform(1, 3))
 

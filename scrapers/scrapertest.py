@@ -55,7 +55,7 @@ def scrape_recipe(url, scraper):
         # Data processing
         cost_span = soup.find("span", class_="cost-per")
         if cost_span:
-            cost_raw = [float(f) for f in re.findall(r'\d+(?:\.\d+)?', cost_span.text)]
+            cost_raw = [float(f) for f in re.findall(r"\d+(?:\.\d+)?", cost_span.text)]
             if len(cost_raw) == 1:
                 cost_total = -1
                 cost_per = cost_raw[0]
@@ -75,7 +75,11 @@ def scrape_recipe(url, scraper):
         try:
             servings = recipe_yield[0]
             serving_unit = (
-                recipe_yield[1].replace(servings, '').replace(")", "").replace("(", "").strip()
+                recipe_yield[1]
+                .replace(servings, "")
+                .replace(")", "")
+                .replace("(", "")
+                .strip()
                 if len(recipe_yield) > 1
                 else ""
             )
@@ -83,29 +87,33 @@ def scrape_recipe(url, scraper):
 
         except:
             servings = -1
-            serving_unit = ''
+            serving_unit = ""
 
         prep_time = extract_time(recipe_data.get("prepTime", 0))
         cook_time = extract_time(recipe_data.get("cookTime", 0))
         total_time = extract_time(recipe_data.get("totalTime", prep_time + cook_time))
 
         ingredients_raw = recipe_data.get("recipeIngredient", [])
-        ingredients = [" ".join(i.split()) for i in ingredients_raw] # normalize spacing
+        ingredients = [
+            " ".join(i.split()) for i in ingredients_raw
+        ]  # normalize spacing
 
         instructions_raw = recipe_data.get("recipeInstructions", [])
         instructions = {}
         step_counter = 1
 
-        def process_instruction(instruction, parent_name=''): #TODO look at this
+        def process_instruction(instruction, parent_name=""):  # TODO look at this
             nonlocal step_counter
             if isinstance(instruction, dict):
-                if instruction.get('@type') == 'HowToSection':
-                    section_name = instruction.get('name', '')
-                    for item in instruction.get('itemListElement', []):
+                if instruction.get("@type") == "HowToSection":
+                    section_name = instruction.get("name", "")
+                    for item in instruction.get("itemListElement", []):
                         process_instruction(item, section_name)
-                elif instruction.get('@type') == 'HowToStep':
+                elif instruction.get("@type") == "HowToStep":
                     prefix = f"{parent_name}: " if parent_name else ""
-                    instructions[step_counter] = f"{prefix}{instruction.get('text', '')}"
+                    instructions[step_counter] = (
+                        f"{prefix}{instruction.get('text', '')}"
+                    )
                     step_counter += 1
 
         for instruction in instructions_raw:
@@ -127,6 +135,7 @@ def scrape_recipe(url, scraper):
 
         return {
             "url": url,
+            "image": recipe_data.get("image")[0],
             "name": recipe_data.get("name", ""),
             "rating-avg": float(
                 recipe_data.get("aggregateRating", {}).get("ratingValue", -1)
@@ -145,7 +154,7 @@ def scrape_recipe(url, scraper):
             "instructions": instructions,
             "nutrition-data": nutrition,
             "notes": notes,
-            "keywords": keywords
+            "keywords": keywords,
         }
 
     except Exception as e:
@@ -157,4 +166,4 @@ scraper = cloudscraper.create_scraper(browser="chrome")
 
 url = "https://www.budgetbytes.com/5-minute-microwave-french-toast-mug/"
 
-print(scrape_recipe(url, scraper))
+pprint(scrape_recipe(url, scraper), sort_dicts=False)
